@@ -2,7 +2,7 @@
 // Env: METERED_APP (bagian sebelum .metered.live) dan METERED_API_KEY
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
-  const app = process.env.METERED_APP;
+  const app ="smilephotobooth";
   const key = process.env.METERED_API_KEY;
   if (!app || !key || !/^[a-z0-9-]+$/i.test(app)) {
     return res.status(200).json({ iceServers: [] });
