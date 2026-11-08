@@ -1,7 +1,90 @@
 @import "tailwindcss";
 
+/* Palet cyanotype: warna datang dari bahan cetaknya (kertas biru, gambar putih). */
+@theme {
+  --color-ink: #0a1f4d;      /* tinta Prusia: tubuh bilik, panel */
+  --color-deep: #133089;     /* biru dalam: garis panel, hover */
+  --color-cyano: #1e4fd6;    /* latar halaman */
+  --color-sky: #8fb2f2;      /* garis halus; teks hanya di atas ink */
+  --color-sunprint: #dce8fa; /* kertas terpapar: strip, teks utama di atas cyano */
+  --color-lamp: #ffc83d;     /* lampu bilik: aksi utama dan state aktif saja */
+
+  --font-sans: "Archivo", system-ui, sans-serif;
+  --font-hand: "Gaegu", cursive;
+}
+
 body {
-  background: #eff6ff;
-  color: #172554;
-  font-family: system-ui, sans-serif;
+  min-height: 100dvh;
+  background: var(--color-cyano);
+  color: var(--color-sunprint);
+  font-family: var(--font-sans);
+}
+
+/* Judul "plakat": tebal dan lebar seperti papan petunjuk di mesin. */
+.placard {
+  font-stretch: 125%;
+  font-weight: 900;
+  line-height: 0.88;
+  letter-spacing: -0.015em;
+}
+
+.btn-go,
+.btn-quiet {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.7rem 1.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn-go {
+  background: var(--color-lamp);
+  color: var(--color-ink);
+}
+.btn-go:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-lamp) 80%, white);
+}
+.btn-quiet {
+  border: 2px solid var(--color-sky);
+  color: var(--color-sunprint);
+}
+.btn-quiet:hover {
+  background: var(--color-deep);
+}
+.btn-go:disabled,
+.btn-quiet:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.panel {
+  background: var(--color-ink);
+  border: 2px solid var(--color-deep);
+  padding: 1.25rem;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-lamp);
+  outline-offset: 3px;
+}
+
+/* Satu-satunya gerak dekoratif: strip keluar dari slot bilik. */
+@keyframes strip-out {
+  from { transform: translateY(-100%); }
+  to { transform: none; }
+}
+.strip-out {
+  animation: strip-out 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

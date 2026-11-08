@@ -6,11 +6,6 @@ const SHOTS = 3; // jumlah foto per strip
 const COUNT = 3; // hitung mundur (detik)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const btn =
-  "rounded-full bg-blue-700 px-6 py-2.5 font-semibold text-white hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:opacity-50";
-const ghost =
-  "rounded-full border border-blue-300 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700";
-
 function Video({ stream, muted, videoRef }) {
   useEffect(() => {
     const v = videoRef.current;
@@ -27,14 +22,15 @@ function Video({ stream, muted, videoRef }) {
   );
 }
 
-function Cell({ label, children }) {
+// Satu jendela bilik: kotak persegi bergaris, label di bawahnya.
+function Window({ label, children }) {
   return (
-    <div className="relative aspect-square overflow-hidden rounded-2xl bg-blue-950">
-      {children}
-      <span className="absolute bottom-2 left-2 rounded-full bg-blue-950/70 px-3 py-1 text-sm text-white">
-        {label}
-      </span>
-    </div>
+    <figure className="m-0">
+      <div className="relative aspect-square overflow-hidden border-2 border-deep bg-ink">
+        {children}
+      </div>
+      <figcaption className="mt-2 text-sm font-bold">{label}</figcaption>
+    </figure>
   );
 }
 
@@ -115,69 +111,102 @@ export default function Room({ room, onLeave }) {
     error,
   };
 
+  const isError = status === "error";
+
   return (
-    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-4 p-4">
-      <header className="flex flex-wrap items-center gap-2">
-        <h1 className="mr-auto text-xl font-bold text-blue-900">Smile Photobooth</h1>
-        <button onClick={copyLink} className={ghost}>
+    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-5 px-4 pb-8 pt-4 sm:px-6">
+      <header className="flex flex-wrap items-center gap-3">
+        <h1 className="placard mr-auto flex items-center gap-2 text-3xl text-sunprint">
+          <span
+            aria-hidden="true"
+            className={`size-3 rounded-full ${status === "connected" ? "bg-lamp" : "bg-ink"}`}
+          />
+          Smile
+        </h1>
+        <button onClick={copyLink} className="btn-quiet !min-h-10 !px-4 text-sm">
           {copied ? "Link tersalin" : "Salin link ajakan"}
         </button>
-        <button onClick={leaveRoom} className={ghost}>
+        <button onClick={leaveRoom} className="btn-quiet !min-h-10 !px-4 text-sm">
           Keluar
         </button>
       </header>
 
-      <div className="relative grid grid-cols-2 gap-3">
-        <Cell label="Kamu">
-          <Video stream={localStream} muted videoRef={localEl} />
-        </Cell>
-        <Cell label="Pasangan">
-          <Video stream={remoteStream} videoRef={remoteEl} />
-          {!remoteStream && (
-            <p className="absolute inset-0 flex items-center justify-center p-4 text-center text-blue-100">
-              Belum ada pasangan
-            </p>
-          )}
-        </Cell>
+      {/* Kemajuan sesi: tiga bingkai strip, bingkai aktif berwarna lampu. */}
+      <div className="flex items-center gap-3">
+        <ol aria-hidden="true" className="flex gap-1.5">
+          {Array.from({ length: SHOTS }, (_, i) => {
+            const n = i + 1;
+            const cls =
+              shot === n
+                ? "bg-lamp border-lamp"
+                : shot > n
+                ? "bg-sunprint border-sunprint"
+                : "border-sky";
+            return <li key={n} className={`h-5 w-7 border-2 ${cls}`} />;
+          })}
+        </ol>
+        <p className="text-sm font-semibold">
+          {shot > 0 ? `Foto ${shot} dari ${SHOTS}` : `${SHOTS} foto per strip`}
+        </p>
+      </div>
 
-        {shot > 0 && (
-          <p className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-blue-950/70 px-4 py-1 text-sm text-white">
-            Foto {shot} dari {SHOTS}
-          </p>
-        )}
+      <div className="relative">
+        <div className="grid grid-cols-2 gap-3">
+          <Window label="Kamu">
+            <Video stream={localStream} muted videoRef={localEl} />
+          </Window>
+          <Window label="Pasangan">
+            <Video stream={remoteStream} videoRef={remoteEl} />
+            {!remoteStream && (
+              <p className="absolute inset-0 grid place-items-center bg-ink p-4 text-center text-sm text-sky">
+                Belum ada pasangan
+              </p>
+            )}
+          </Window>
+        </div>
+
         {count !== null && (
           <p
             aria-live="assertive"
-            className="pointer-events-none absolute inset-0 flex items-center justify-center text-9xl font-bold text-white drop-shadow-lg"
+            className="placard pointer-events-none absolute inset-x-0 top-0 grid aspect-[2/1] place-items-center bg-ink/40 text-[min(36vw,11rem)] text-lamp"
           >
             {count}
           </p>
         )}
         <div
-          className={`pointer-events-none absolute inset-0 rounded-2xl bg-white transition-opacity duration-150 ${
+          className={`pointer-events-none absolute inset-x-0 top-0 aspect-[2/1] bg-white transition-opacity duration-150 ${
             flash ? "opacity-90" : "opacity-0"
           }`}
         />
       </div>
 
-      <p role="status" className={status === "error" ? "text-red-700" : "text-blue-900"}>
-        {messages[status]}
-      </p>
+      {isError ? (
+        <div role="status" className="bg-sunprint p-4 font-semibold text-ink">
+          {messages.error}
+        </div>
+      ) : (
+        <p role="status" className="font-semibold">
+          {messages[status]}
+        </p>
+      )}
 
-      <div className="flex flex-wrap gap-3">
-        {status === "error" ? (
-          <button onClick={retry} className={btn}>
+      <div className="flex">
+        {isError ? (
+          <button onClick={retry} className="btn-go w-full sm:w-auto">
             Coba lagi
           </button>
         ) : (
-          <button onClick={start} disabled={status !== "connected" || shot > 0} className={btn}>
-            Mulai foto
+          <button
+            onClick={start}
+            disabled={status !== "connected" || shot > 0}
+            className="btn-go w-full sm:w-auto"
+          >
+            {shot > 0 ? "Sedang memotret…" : "Mulai foto"}
           </button>
         )}
       </div>
-      <p className="text-sm text-blue-900/70">
-        Pakai headset supaya suara tidak bergema. Foto diambil {SHOTS} kali, masing-masing setelah
-        hitung mundur {COUNT} detik.
+      <p className="text-sm">
+        Pakai headset supaya suara tidak bergema. Setiap foto diambil setelah hitung mundur {COUNT} detik.
       </p>
 
       {strip && (
@@ -185,14 +214,16 @@ export default function Room({ room, onLeave }) {
           role="dialog"
           aria-modal="true"
           aria-label="Hasil photostrip"
-          className="fixed inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-blue-950/85 p-4"
+          className="fixed inset-0 z-10 flex flex-col items-center justify-center gap-5 overflow-y-auto bg-ink/95 p-4"
         >
-          <img src={strip} alt="Hasil photostrip" className="max-h-[75vh] rounded-lg" />
-          <div className="flex gap-3">
-            <a href={strip} download="smile-photobooth.png" className={btn}>
+          <div className="overflow-hidden pb-2">
+            <img src={strip} alt="Hasil photostrip" className="strip-out max-h-[70dvh] w-auto" />
+          </div>
+          <div className="flex flex-wrap justify-center gap-3">
+            <a href={strip} download="smile-photobooth.png" className="btn-go">
               Unduh PNG
             </a>
-            <button onClick={() => setStrip(null)} className={ghost + " bg-white"}>
+            <button onClick={() => setStrip(null)} className="btn-quiet">
               Foto lagi
             </button>
           </div>
