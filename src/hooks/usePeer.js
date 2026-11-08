@@ -1,15 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { signal } from "../lib/api";
 
-const ICE_SERVERS = [
-  { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
-];
-if (import.meta.env.VITE_TURN_URL) {
-  ICE_SERVERS.push({
-    urls: import.meta.env.VITE_TURN_URL,
-    username: import.meta.env.VITE_TURN_USER,
-    credential: import.meta.env.VITE_TURN_PASS,
-  });
+const STUN = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }];
+
+let iceCache = null;
+async function getIceServers() {
+  if (iceCache) return iceCache;
+  try {
+    const r = await fetch("/api/turn");
+    const { iceServers } = await r.json();
+    if (Array.isArray(iceServers) && iceServers.length) {
+      iceCache = [...STUN, ...iceServers];
+      return iceCache;
+    }
+  } catch {
+    /* pakai STUN saja */
+  }
+  return STUN; // tidak di-cache, supaya dicoba lagi saat masuk room berikutnya
 }
 
 function getClientId() {
@@ -64,6 +71,7 @@ export default function usePeer(room, onMessage) {
     let myRole = null;
     let connected = false;
     let busy = false;
+    let iceServers = STUN;
     let oid = null; // id negosiasi, supaya pesan lama diabaikan
     let pendingIce = [];
     let queue = Promise.resolve(); // kirim pesan berurutan
@@ -113,7 +121,7 @@ export default function usePeer(room, onMessage) {
         pc.close();
       }
       pendingIce = [];
-      const p = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      const p = new RTCPeerConnection({ iceServers });
       pc = p;
       stream.getTracks().forEach((t) => p.addTrack(t, stream));
       p.onicecandidate = (e) => {
@@ -204,6 +212,8 @@ export default function usePeer(room, onMessage) {
       try {
         setStatus("starting");
         setError("");
+        iceServers = await getIceServers();
+        if (dead) return;
         const s = await getMedia();
         if (dead) {
           s.getTracks().forEach((t) => t.stop());
